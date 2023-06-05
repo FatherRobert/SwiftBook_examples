@@ -1,0 +1,176 @@
+import UIKit
+//класс фигуры
+
+class Chessman {
+    enum ChessmanColor: String {
+        case white = "white"
+        case black = "black"
+    }
+
+    enum ChessmanType: String {
+        case king = "King"
+        case queen = "Queen"
+        case bishop = "Bishop"
+        case knight = "Knight"
+        case rook = "Rook"
+        case pawn = "Pawn"
+    }
+    
+    let color: ChessmanColor
+    let type: ChessmanType
+    var coordinates: (String,Int)? = nil
+    let symbol: Character
+    
+    init(color: ChessmanColor, type: ChessmanType) {
+        self.color = color
+        self.type = type
+        symbol = Character("")
+    }
+    
+    init(color: ChessmanColor, type: ChessmanType, coordinates: (String,Int), symbol: Character) {
+        self.color = color
+        self.type = type
+        self.coordinates = coordinates
+        self.symbol = symbol
+    }
+    
+    func setCoordinates(char c:String,num n:Int) {
+        coordinates = (c,n)
+    }
+    func kill() {
+        coordinates = nil
+        
+    }
+}
+
+//Класс из нового задания
+class GameDesk {
+    var killedWhite: [Chessman] = []
+    var killedBlack:[Chessman] = []
+    var desk: [Int:[String:Chessman]] = [:]
+    let str = "ABCDEFGH"
+    init() {
+        for i in 1...8 {
+            desk[i]=[:]
+        }
+    }
+    subscript(alpha: String, number: Int) -> Chessman? {
+        get {
+            return self.desk[number]![alpha]
+        }
+        set {
+            if let chessman = newValue {
+                //очистка клетки при перестановке через сабскрипт
+                if (chessman.coordinates != nil) {
+                    self.desk[chessman.coordinates!.1]![chessman.coordinates!.0] = nil
+                    
+                }
+                
+                self.setChessman(chess: chessman, coordinates: (alpha,number))
+            }else {
+                //kill chess
+                
+                self.desk[number]![alpha]?.kill()
+                if self.desk[number]![alpha]?.color == .white {
+                    self.killedWhite.append(self.desk[number]![alpha]!)
+                } else if self.desk[number]![alpha]?.color == .black {
+                    self.killedBlack.append(self.desk[number]![alpha]!)
+                }
+                self.desk[number]![alpha] = nil
+            }
+        }
+    }
+    func setChessman(chess:Chessman, coordinates: (String,Int)) {
+        let rowRange = 1...8
+        let colRange = "A"..."H"
+        if(rowRange.contains(coordinates.1)&&colRange.contains(coordinates.0)) {
+            //очистка старой клетки
+            if (chess.coordinates != nil) {
+                self.desk[chess.coordinates!.1]![chess.coordinates!.0] = nil
+            }
+            self.desk[coordinates.1]![coordinates.0] = chess
+            chess.setCoordinates(char: coordinates.0, num: coordinates.1)
+        } else {
+            print("Coordinates is out of range")
+        }
+    }
+    
+    func move(from f:(String,Int), to x:(String,Int)) {
+        //универсальная проверка для всех фигур: есть что перемещать + не наступать на фигуру своего цвета
+        if (self.desk[f.1]![f.0] != nil) && (self.desk[f.1]![f.0]?.color != self.desk[x.1]![x.0]?.color ) {
+            //для белой пешки
+            if (self.desk[f.1]![f.0]?.color == .white) {
+                //обычный ход пешки
+                if f.0==x.0 && f.1-1 == x.1 {
+                    self.setChessman(chess: self.desk[f.1]![f.0]!, coordinates: x)
+                } // первый ход пешки
+                else if f.0==x.0 && f.1 == 7 && f.1-2 == x.1 {
+                    self.setChessman(chess: self.desk[f.1]![f.0]!, coordinates: x)
+                } //атака пешки
+                else if ((str.firstIndex(of: Character(x.0)) == str.index(before: str.firstIndex(of: Character(f.0))!)) || (str.firstIndex(of: Character(x.0)) == str.index(after: str.firstIndex(of: Character(f.0))!))) && (f.1-1 == x.1) && (self.desk[x.1]![x.0] != nil) {
+                    self.killedBlack.append(self.desk[x.1]![x.0]!)
+                    self.setChessman(chess: self.desk[f.1]![f.0]!, coordinates: x)
+                    
+                }
+            } else {
+                self.setChessman(chess: self.desk[f.1]![f.0]!, coordinates: x)
+            }
+        }
+    }
+    
+    func printDesk() {
+        if !self.killedBlack.isEmpty {
+            for i in 1...(self.killedBlack.count) {
+                print(self.killedBlack[i-1].symbol,terminator: "")
+            }
+            print("\n")
+        }
+        for r in 1...8 {
+            print(r,terminator: " ")
+            for c in str {
+                print(" ", terminator: "")
+                print("\(self.desk[r]![String(c)]?.symbol ?? "-")", terminator: "")
+                print(" ", terminator: "")
+            }
+            print("\n")
+        }
+        print ("   ", terminator: "")
+        for c in str {
+            print (c, terminator: "  ")
+        }
+        print("\n")
+        if !self.killedWhite.isEmpty {
+            for i in 1...(self.killedWhite.count) {
+                print(self.killedWhite[i-1].symbol,terminator: "")
+            }
+        }
+    }
+}
+var game = GameDesk()
+var whiteKing = Chessman(color: .white, type: .king,coordinates: ("E",8),symbol: "\u{2654}")
+var whiteKnightL = Chessman(color: .white, type: .knight,coordinates: ("B",8),symbol: "\u{2658}")
+var whitePawn1 = Chessman(color: .white, type: .pawn,coordinates: ("D",7),symbol: "\u{2659}")
+var whitePawn2 = Chessman(color: .white, type: .pawn,coordinates: ("B",7),symbol: "\u{2659}")
+var whitePawn3 = Chessman(color: .white, type: .pawn,coordinates: ("C",7),symbol: "\u{2659}")
+var blackQueen = Chessman(color: .black, type: .queen, coordinates: ("D",1), symbol: "\u{265B}")
+var blackPawn1 = Chessman(color: .black, type: .pawn, coordinates: ("E",2), symbol: "\u{265D}")
+var blackPawn2 = Chessman(color: .black, type: .pawn, coordinates: ("F",2), symbol: "\u{265D}")
+var blackPawn3 = Chessman(color: .black, type: .pawn, coordinates: ("G",2), symbol: "\u{265D}")
+
+game["C",4] = nil
+game["E",8] = whiteKing
+game["B",8] = whiteKnightL
+game["D",7] = whitePawn1
+game["B",7] = whitePawn2
+game["C",7] = whitePawn3
+game["D",1] = blackQueen
+game["E",2] = blackPawn1
+game["F",2] = blackPawn2
+game["G",2] = blackPawn3
+game.move(from: ("B",8), to: ("C",6))
+game.move(from: ("F",2), to: ("F",4))
+game.move(from: ("E",6), to: ("C",6))
+game.move(from: ("C",7), to: ("C",6))
+game.move(from: ("D",1), to: ("B",5))
+game.move(from: ("C",6), to: ("B",5)) // атака пешки на ферзя противоположного цвета, при этом ферзь появится на "кладбище"
+game.printDesk()
